@@ -53,7 +53,6 @@ Resources:
           cd /var/www/html
           echo "Udacity Demo Web Server Up and Running!" > index.html       
       ImageId: ami-005de95e8ff495156
-      KeyName: udacity
       SecurityGroups:
       - Ref: WebServerSecGroup
       InstanceType: t2.medium
@@ -148,6 +147,6 @@ Resources:
         - !Ref UdacityS3ReadOnlyEC2
 
 Outputs:
-  LoadBalancerArn:
+  LoadBalancerDNS:
     Value: !GetAtt WebAppLB.DNSName
   
