@@ -19,7 +19,6 @@ jobs:
       - run:
           name: Get IP and append it to inventory
           command: |
-            mkdir -p /temp/workspace
             aws ec2 describe-instances \
             --query 'Reservations[*].Instances[*].PublicIpAddress' \
             --filters "Name=tag:Project,Values=udacity" \
@@ -30,7 +29,7 @@ jobs:
             yum install -y tar gzip
             
       - persist_to_workspace:
-          root: /temp/workspace
+          root: ./
           paths: 
             - inventory
             - main-remote.yml
@@ -43,7 +42,7 @@ jobs:
       - add_ssh_keys:
           fingerprints: ["c6:67:d6:c8:31:80:f0:7d:2c:bc:b7:8a:2d:71:7e:5e"]
       - attach_workspace:
-          at: /temp/workspace
+          at: ./
 
       - run:
           name: Install Ansible
