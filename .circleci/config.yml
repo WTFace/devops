@@ -1,22 +1,23 @@
-
 version: 2.1
-commands:
-  print_pipeline_id:
-    steps:
-      - run: echo ${CIRCLE_WORKFLOW_ID}
-      - run: return 1
+
+orbs:
+  aws-cli: circleci/aws-cli@2.0.3
+
 jobs:
-  test-command:
+  create_infrastructure: 
     docker:
-      - image: cimg/base:stable
+      - image: amazon/aws-cli
     steps:
-      - print_pipeline_id
+      - checkout
       - run:
-          name: Upload Failed Tests
-          command: curl --data fail_tests.log http://example.com/error_logs
-          when: on_fail
-          
+          name: Create Cloudformation Stack
+          command: |
+            aws cloudformation deploy \
+              --template-file template.yml \
+              --stack-name myStack-${CIRCLE_WORKFLOW_ID:0:5} \
+              --region us-east-1
+
 workflows:
-  say-hello-workflow:
+  myWorkflow:
     jobs:
-      - test-command
+      - create_infrastructure
