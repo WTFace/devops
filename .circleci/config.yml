@@ -23,6 +23,11 @@ jobs:
             --query 'Reservations[*].Instances[*].PublicIpAddress' \
             --filters "Name=tag:Project,Values=udacity" \
             --output text >> inventory
+      - run:
+          name: Install tar/gzip utility
+          command: |
+            apt-get -y install tar gzip
+            
       - persist_to_workspace:
           root: /temp/workspace
           paths: 
