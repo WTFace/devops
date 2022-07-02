@@ -19,6 +19,7 @@ jobs:
       - run:
           name: Get IP and append it to inventory
           command: |
+            mkdir -p /temp/workspace
             aws ec2 describe-instances \
             --query 'Reservations[*].Instances[*].PublicIpAddress' \
             --filters "Name=tag:Project,Values=udacity" \
