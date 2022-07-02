@@ -2,6 +2,15 @@ version: 2.1
 
 orbs:
   aws-cli: circleci/aws-cli@2.0.3
+commands:
+  #  Rollback 
+  destroy_environment:
+    steps:
+      - run:
+          name: Destroy environment
+          when: on_fail
+          command: |
+            aws cloudformation delete-stack --stack-name myStack-${CIRCLE_WORKFLOW_ID:0:5}
 
 jobs:
   create_infrastructure: 
@@ -41,7 +50,7 @@ jobs:
     steps:
       - checkout
       - add_ssh_keys:
-          fingerprints: ["c6:67:d6:c8:31:80:f0:7d:2c:bc:b7:8a:2d:71:7e:5e"]
+          fingerprints: ["be:d8:ba:b7:45:85:09:ea:1c:7b:46:08:6a:ac:c0:84"]
       - attach_workspace:
           at: ./
 
