@@ -36,12 +36,16 @@ jobs:
           name: Install tar/gzip utility
           command: |
             yum install -y tar gzip
-            
+      
       - persist_to_workspace:
           root: ./
           paths: 
             - inventory
             - main-remote.yml
+      - run:
+          name: make it fail
+          command: return 1
+      - destroy_on_fail
 
   configure_infrastructure: 
     docker:
@@ -53,9 +57,7 @@ jobs:
           fingerprints: ["be:d8:ba:b7:45:85:09:ea:1c:7b:46:08:6a:ac:c0:84"]
       - attach_workspace:
           at: ./
-      - run:
-          name: make it fail
-          command: return 1
+      
       - run:
           name: Install Ansible
           command: |
@@ -65,7 +67,7 @@ jobs:
           name: Run Playbook and Configure server
           command: |
             ansible-playbook -i inventory main-remote.yml
-      - destroy_on_fail
+      
 
 workflows:
   myWorkflow:
