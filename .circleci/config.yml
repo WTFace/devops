@@ -24,10 +24,9 @@ jobs:
           command: |
             aws cloudformation deploy \
             --template-file bucket.yml \
-            --stack-name new-stack-${CIRCLE_WORKFLOW_ID:0:7} \
+            --stack-name stack-bucket-${CIRCLE_WORKFLOW_ID:0:7} \
             --parameter-overrides MyBucketName="mybucket-${CIRCLE_WORKFLOW_ID:0:7}"
-      # Uncomment the step below if yoou wish to upload all contents of the current directory to the S3 bucket
-      # - run: aws s3 sync . s3://mybucket-${CIRCLE_WORKFLOW_ID:0:7} --delete
+      - run: aws s3 sync index.html s3://mybucket-${CIRCLE_WORKFLOW_ID:0:7} --delete
 
   # Fetch and save the pipeline ID (bucket ID) responsible for the last release.
   get_last_deployment_id:
@@ -128,12 +127,14 @@ jobs:
       
 
 workflows:
-  myWorkflow:
+  # myWorkflow:
+  #   jobs:
+  #     - create_infrastructure
+  #     - configure_infrastructure:
+  #         requires:
+  #           - create_infrastructure
+  bluegreen:
     jobs:
-      # - create_infrastructure
-      # - configure_infrastructure:
-      #     requires:
-      #       - create_infrastructure
       - create_and_deploy_front_end
       - promote_to_production:
           requires: 
