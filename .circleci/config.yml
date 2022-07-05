@@ -41,6 +41,7 @@ jobs:
             aws cloudformation \
             list-exports --query "Exports[?Name==\`PipelineID\`].Value" \
             --no-paginate --output text > ~/textfile.txt
+            cat ~/textfile.txt
       - persist_to_workspace:
           root: ~/
           paths: 
@@ -69,6 +70,7 @@ jobs:
       - run:
           name: Destroy the previous S3 bucket and CloudFormation stack.
           command: |
+            cat ~/textfile.txt
             export OldBucketID=$(cat ~/textfile.txt)
             aws s3 rm "s3://${OldBucketID}" --recursive
   # create_infrastructure: 
@@ -135,11 +137,14 @@ workflows:
   #           - create_infrastructure
   bluegreen:
     jobs:
-      - create_and_deploy_front_end
+      - get_last_deployment_id
+      - create_and_deploy_front_end:
+          requires:
+            - get_last_deployment_id
       - promote_to_production:
           requires: 
             - create_and_deploy_front_end
-      - get_last_deployment_id
+      
       - clean_up_old_front_end:
           requires:
             - get_last_deployment_id
