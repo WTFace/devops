@@ -26,7 +26,7 @@ jobs:
             --template-file bucket.yml \
             --stack-name stack-bucket-${CIRCLE_WORKFLOW_ID:0:7} \
             --parameter-overrides MyBucketName="mybucket-${CIRCLE_WORKFLOW_ID:0:7}"
-      - run: aws s3 sync index.html s3://mybucket-${CIRCLE_WORKFLOW_ID:0:7} --delete
+      - run: aws s3 sync ./files s3://mybucket-${CIRCLE_WORKFLOW_ID:0:7} --delete
 
   # Fetch and save the pipeline ID (bucket ID) responsible for the last release.
   get_last_deployment_id:
