@@ -13,66 +13,133 @@ commands:
             aws cloudformation delete-stack --stack-name myStack-${CIRCLE_WORKFLOW_ID:0:5}
 
 jobs:
-  create_infrastructure: 
+  # `--parameter-overrides` let you specify a value that override parameter value in the bucket.yml template file.
+  create_and_deploy_front_end:
     docker:
       - image: amazon/aws-cli
     steps:
       - checkout
       - run:
-          name: Create Cloudformation Stack
+          name: Execute bucket.yml - Create Cloudformation Stack
           command: |
             aws cloudformation deploy \
-              --template-file template.yml \
-              --stack-name myStack-${CIRCLE_WORKFLOW_ID:0:5} \
-              --region us-east-1
-      - run:
-          name: Get IP and append it to inventory
-          command: |
-            aws ec2 describe-instances \
-            --query 'Reservations[*].Instances[*].PublicIpAddress' \
-            --filters "Name=tag:Project,Values=udacity" \
-            --output text >> inventory
-      - run:
-          name: Install tar/gzip utility
-          command: |
-            yum install -y tar gzip
-      
-      - persist_to_workspace:
-          root: ./
-          paths: 
-            - inventory
-            - main-remote.yml
-      - run:
-          name: make it fail
-          command: return 1
-      - destroy_on_fail
+            --template-file bucket.yml \
+            --stack-name new-stack-${CIRCLE_WORKFLOW_ID:0:7} \
+            --parameter-overrides MyBucketName="mybucket-${CIRCLE_WORKFLOW_ID:0:7}"
+      # Uncomment the step below if yoou wish to upload all contents of the current directory to the S3 bucket
+      # - run: aws s3 sync . s3://mybucket-${CIRCLE_WORKFLOW_ID:0:7} --delete
 
-  configure_infrastructure: 
+  # Fetch and save the pipeline ID (bucket ID) responsible for the last release.
+  get_last_deployment_id:
     docker:
-      - image: python:3.11-rc-alpine
-      # - image: python:3.7-alpine3.11
+      - image: amazon/aws-cli
     steps:
       - checkout
-      - add_ssh_keys:
-          fingerprints: ["be:d8:ba:b7:45:85:09:ea:1c:7b:46:08:6a:ac:c0:84"]
+      - run: yum install -y tar gzip
+      - run:
+          name: Fetch and save the old pipeline ID (bucket name) responsible for the last release.
+          command: |
+            aws cloudformation \
+            list-exports --query "Exports[?Name==\`PipelineID\`].Value" \
+            --no-paginate --output text > ~/textfile.txt
+      - persist_to_workspace:
+          root: ~/
+          paths: 
+            - textfile.txt
+
+  promote_to_production:
+    docker:
+      - image: amazon/aws-cli
+    steps:
+      - checkout
+      - run:
+          name: Execute cloudfront.yml
+          command: |
+            aws cloudformation deploy \
+            --template-file cloudfront.yml \
+            --stack-name production-distro \
+            --parameter-overrides PipelineID="mybucket-${CIRCLE_WORKFLOW_ID:0:7}"
+  clean_up_old_front_end:
+    docker:
+      - image: amazon/aws-cli
+    steps:
+      - checkout
+      - run: yum install -y tar gzip
       - attach_workspace:
-          at: ./
+          at: ~/
+      - run:
+          name: Destroy the previous S3 bucket and CloudFormation stack.
+          command: |
+            export OldBucketID=$(cat ~/textfile.txt)
+            aws s3 rm "s3://${OldBucketID}" --recursive
+  # create_infrastructure: 
+  #   docker:
+  #     - image: amazon/aws-cli
+  #   steps:
+  #     - checkout
+  #     - run:
+  #         name: Create Cloudformation Stack
+  #         command: |
+  #           aws cloudformation deploy \
+  #             --template-file template.yml \
+  #             --stack-name myStack-${CIRCLE_WORKFLOW_ID:0:5} \
+  #             --region us-east-1
+  #     - run:
+  #         name: Get IP and append it to inventory
+  #         command: |
+  #           aws ec2 describe-instances \
+  #           --query 'Reservations[*].Instances[*].PublicIpAddress' \
+  #           --filters "Name=tag:Project,Values=udacity" \
+  #           --output text >> inventory
+  #     - run:
+  #         name: Install tar/gzip utility
+  #         command: |
+  #           yum install -y tar gzip
       
-      - run:
-          name: Install Ansible
-          command: |
-            # Install Ansible
-            apk add --update ansible
-      - run:
-          name: Run Playbook and Configure server
-          command: |
-            ansible-playbook -i inventory main-remote.yml
+  #     - persist_to_workspace:
+  #         root: ./
+  #         paths: 
+  #           - inventory
+  #           - main-remote.yml
+  #     - run:
+  #         name: make it fail
+  #         command: return 1
+  #     - destroy_on_fail
+
+  # configure_infrastructure: 
+  #   docker:
+  #     - image: python:3.11-rc-alpine
+  #   steps:
+  #     - checkout
+  #     - add_ssh_keys:
+  #         fingerprints: ["be:d8:ba:b7:45:85:09:ea:1c:7b:46:08:6a:ac:c0:84"]
+  #     - attach_workspace:
+  #         at: ./
+      
+  #     - run:
+  #         name: Install Ansible
+  #         command: |
+  #           # Install Ansible
+  #           apk add --update ansible
+  #     - run:
+  #         name: Run Playbook and Configure server
+  #         command: |
+  #           ansible-playbook -i inventory main-remote.yml
       
 
 workflows:
   myWorkflow:
     jobs:
-      - create_infrastructure
-      - configure_infrastructure:
+      # - create_infrastructure
+      # - configure_infrastructure:
+      #     requires:
+      #       - create_infrastructure
+      - create_and_deploy_front_end
+      - promote_to_production:
+          requires: 
+            - create_and_deploy_front_end
+      - get_last_deployment_id
+      - clean_up_old_front_end:
           requires:
-            - create_infrastructure
+            - get_last_deployment_id
+            - promote_to_production
